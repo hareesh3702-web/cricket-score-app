@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cricket Score App</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>🏏 Cricket Score App</h1>
+</header>
+
+<main>
+  <section id="setup-section" class="card">
+    <h2>Match Setup</h2>
+
+    <label>Team 1 Name</label>
+    <input id="team1" placeholder="Team 1">
+
+    <label>Team 2 Name</label>
+    <input id="team2" placeholder="Team 2">
+
+    <label>Total Overs</label>
+    <input id="totalOvers" type="number" min="1" value="20">
+
+    <button onclick="startMatch()">Start Match</button>
+    <button onclick="loadSavedMatch()">Load Last Match</button>
+  </section>
+
+  <section id="match-section" class="hidden">
+    <div class="scoreboard card">
+      <h2 id="battingTeamName">Batting Team</h2>
+      <div class="big-score">
+        <span id="teamRuns">0</span>/<span id="teamWickets">0</span>
+      </div>
+      <p>
+        Overs: <span id="overs">0.0</span> / <span id="totalOversText">20</span>
+        | Run Rate: <span id="runRate">0.00</span>
+      </p>
+      <p id="targetInfo"></p>
+    </div>
+
+    <div class="card">
+      <h3>Current Batter</h3>
+      <select id="batterSelect"></select>
+
+      <h3>Current Bowler</h3>
+      <select id="bowlerSelect"></select>
+    </div>
+
+    <div class="card scoring-buttons">
+      <button onclick="addRuns(0)">0</button>
+      <button onclick="addRuns(1)">1</button>
+      <button onclick="addRuns(2)">2</button>
+      <button onclick="addRuns(3)">3</button>
+      <button onclick="addRuns(4)">4</button>
+      <button onclick="addRuns(6)">6</button>
+
+      <button onclick="addExtra('wide')">Wide</button>
+      <button onclick="addExtra('noball')">No Ball</button>
+      <button onclick="addExtra('bye')">Bye</button>
+      <button onclick="addExtra('legbye')">Leg Bye</button>
+
+      <button class="danger" onclick="addWicket()">Wicket</button>
+      <button onclick="endInnings()">End Innings</button>
+      <button class="danger" onclick="resetMatch()">Reset Match</button>
+    </div>
+
+    <div class="card">
+      <h3>Batting Scorecard</h3>
+      <table id="battingTable">
+        <thead>
+          <tr>
+            <th>Batter</th>
+            <th>R</th>
+            <th>B</th>
+            <th>4s</th>
+            <th>6s</th>
+            <th>SR</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Bowling Scorecard</h3>
+      <table id="bowlingTable">
+        <thead>
+          <tr>
+            <th>Bowler</th>
+            <th>O</th>
+            <th>R</th>
+            <th>W</th>
+            <th>Econ</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Ball History</h3>
+      <div id="ballHistory"></div>
+    </div>
+  </section>
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
