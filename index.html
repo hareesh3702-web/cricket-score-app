@@ -3,24 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cricket Score App</title>
+  <title>Cricket Tournament Score App</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>🏏 Cricket Score App</h1>
+  <h1>🏏 Cricket Tournament Score App</h1>
 </header>
 
 <main>
-  <section id="setup-section" class="card">
+  <section id="teams-section" class="card">
+    <h2>Teams</h2>
+
+    <label>Number of Teams</label>
+    <input id="teamCount" type="number" min="2" max="16" value="2">
+
+    <button onclick="createTeamInputs()">Create Teams</button>
+
+    <div id="teamInputs"></div>
+
+    <button onclick="saveTeams()">Save Teams and Players</button>
+  </section>
+
+  <section id="match-setup-section" class="card hidden">
     <h2>Match Setup</h2>
 
-    <label>Team 1 Name</label>
-    <input id="team1" placeholder="Team 1">
+    <label>Batting Team</label>
+    <select id="battingTeam"></select>
 
-    <label>Team 2 Name</label>
-    <input id="team2" placeholder="Team 2">
+    <label>Bowling Team</label>
+    <select id="bowlingTeam"></select>
 
     <label>Total Overs</label>
     <input id="totalOvers" type="number" min="1" value="20">
@@ -32,21 +45,29 @@
   <section id="match-section" class="hidden">
     <div class="scoreboard card">
       <h2 id="battingTeamName">Batting Team</h2>
+
       <div class="big-score">
         <span id="teamRuns">0</span>/<span id="teamWickets">0</span>
       </div>
+
       <p>
         Overs: <span id="overs">0.0</span> / <span id="totalOversText">20</span>
         | Run Rate: <span id="runRate">0.00</span>
       </p>
+
       <p id="targetInfo"></p>
     </div>
 
     <div class="card">
-      <h3>Current Batter</h3>
-      <select id="batterSelect"></select>
+      <h3>Batters at Crease</h3>
 
-      <h3>Current Bowler</h3>
+      <label>Striker</label>
+      <select id="strikerSelect"></select>
+
+      <label>Non-Striker</label>
+      <select id="nonStrikerSelect"></select>
+
+      <label>Current Bowler</label>
       <select id="bowlerSelect"></select>
     </div>
 
@@ -64,6 +85,7 @@
       <button onclick="addExtra('legbye')">Leg Bye</button>
 
       <button class="danger" onclick="addWicket()">Wicket</button>
+      <button onclick="swapBatters()">Swap Batters</button>
       <button onclick="endInnings()">End Innings</button>
       <button class="danger" onclick="resetMatch()">Reset Match</button>
     </div>
@@ -74,6 +96,7 @@
         <thead>
           <tr>
             <th>Batter</th>
+            <th>Role</th>
             <th>R</th>
             <th>B</th>
             <th>4s</th>
@@ -92,6 +115,7 @@
         <thead>
           <tr>
             <th>Bowler</th>
+            <th>Role</th>
             <th>O</th>
             <th>R</th>
             <th>W</th>
