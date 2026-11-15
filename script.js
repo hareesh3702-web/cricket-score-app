@@ -1,62 +1,209 @@
+let teams = [];
 let match = null;
 
+const ROLES = ["Batter", "Bowler", "All-Rounder", "Keeper"];
+
+function createTeamInputs() {
+  const count = Number(document.getElementById("teamCount").value);
+  const container = document.getElementById("teamInputs");
+
+  if (count < 2 || count > 16) {
+    alert("Please enter between 2 and 16 teams.");
+    return;
+  }
+
+  container.innerHTML = "";
+
+  for (let i = 0; i < count; i++) {
+    const box = document.createElement("div");
+    box.className = "team-box";
+
+    box.innerHTML = `
+      <label>Team ${i + 1} Name</label>
+      <input class="team-name" placeholder="Enter team name">
+
+      <label>Number of Players</label>
+      <input class="player-count" type="number" min="1" max="20" value="11">
+
+      <div class="players"></div>
+
+      <button onclick="addPlayerInputs(this)">Add Player</button>
+    `;
+
+    container.appendChild(box);
+    addPlayerInputs(box.querySelector("button"));
+  }
+}
+
+function addPlayerInputs(button) {
+  const playersBox = button.parentElement.querySelector(".players");
+
+  const row = document.createElement("div");
+  row.className = "player-row";
+
+  row.innerHTML = `
+    <input class="player-name" placeholder="Player name">
+    <select class="player-role">
+      <option>Batter</option>
+      <option>Bowler</option>
+      <option>All-Rounder</option>
+      <option>Keeper</option>
+    </select>
+  `;
+
+  playersBox.appendChild(row);
+}
+
+function saveTeams() {
+  const teamBoxes = document.querySelectorAll(".team-box");
+  teams = [];
+
+  teamBoxes.forEach(box => {
+    const teamName = box.querySelector(".team-name").value.trim();
+    const playerRows = box.querySelectorAll(".player-row");
+
+    if (!teamName) {
+      alert("Please enter every team name.");
+      return;
+    }
+
+    const players = [];
+
+    playerRows.forEach(row => {
+      const playerName = row.querySelector(".player-name").value.trim();
+      const playerRole = row.querySelector(".player-role").value;
+
+      if (playerName) {
+        players.push({
+          name: playerName,
+          role: playerRole,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          out: false,
+          status: "Did Not Bat",
+          bowlingBalls: 0,
+          bowlingRuns: 0,
+          wickets: 0
+        });
+      }
+    });
+
+    if (players.length === 0) {
+      alert(`Please add at least one player for ${teamName}.`);
+      return;
+    }
+
+    teams.push({
+      name: teamName,
+      players
+    });
+  });
+
+  if (teams.length < 2) {
+    alert("Please add at least two teams.");
+    return;
+  }
+
+  localStorage.setItem("cricketTeams", JSON.stringify(teams));
+
+  fillTeamSelects();
+  document.getElementById("teams-section").classList.add("hidden");
+  document.getElementById("match-setup-section").classList.remove("hidden");
+
+  alert("Teams and players saved successfully.");
+}
+
+function fillTeamSelects() {
+  const battingTeam = document.getElementById("battingTeam");
+  const bowlingTeam = document.getElementById("bowlingTeam");
+
+  battingTeam.innerHTML = "";
+  bowlingTeam.innerHTML = "";
+
+  teams.forEach(team => {
+    const option1 = document.createElement("option");
+    option1.value = team.name;
+    option1.textContent = team.name;
+    battingTeam.appendChild(option1);
+
+    const option2 = document.createElement("option");
+    option2.value = team.name;
+    option2.textContent = team.name;
+    bowlingTeam.appendChild(option2);
+  });
+
+  if (teams.length > 1) {
+    bowlingTeam.selectedIndex = 1;
+  }
+}
+
 function startMatch() {
-  const team1 = document.getElementById("team1").value.trim();
-  const team2 = document.getElementById("team2").value.trim();
+  const battingTeamName = document.getElementById("battingTeam").value;
+  const bowlingTeamName = document.getElementById("bowlingTeam").value;
   const totalOvers = Number(document.getElementById("totalOvers").value);
 
-  if (!team1 || !team2 || totalOvers < 1) {
-    alert("Please enter both team names and a valid number of overs.");
+  if (battingTeamName === bowlingTeamName) {
+    alert("Batting team and bowling team cannot be the same.");
+    return;
+  }
+
+  const battingTeam = teams.find(team => team.name === battingTeamName);
+  const bowlingTeam = teams.find(team => team.name === bowlingTeamName);
+
+  if (!battingTeam || !bowlingTeam) {
+    alert("Please save teams first.");
     return;
   }
 
   match = {
-    team1,
-    team2,
     totalOvers,
     innings: 1,
-    battingTeam: team1,
-    bowlingTeam: team2,
+    battingTeam: battingTeamName,
+    bowlingTeam: bowlingTeamName,
+    battingPlayers: JSON.parse(JSON.stringify(battingTeam.players)),
+    bowlingPlayers: JSON.parse(JSON.stringify(bowlingTeam.players)),
+    striker: "",
+    nonStriker: "",
+    currentBowler: "",
     runs: 0,
     wickets: 0,
     legalBalls: 0,
-    batters: [],
-    bowlers: [],
-    currentBatter: "",
-    currentBowler: "",
     ballHistory: [],
     firstInningsRuns: null,
     completed: false
   };
 
-  for (let i = 1; i <= 11; i++) {
-    match.batters.push({
-      name: `${team1} Player ${i}`,
-      runs: 0,
-      balls: 0,
-      fours: 0,
-      sixes: 0,
-      out: false,
-      status: "Not Out"
-    });
+  const availableBatters = match.battingPlayers.filter(
+    player => player.role === "Batter" || player.role === "All-Rounder" || player.role === "Keeper"
+  );
 
-    match.bowlers.push({
-      name: `${team2} Player ${i}`,
-      balls: 0,
-      runs: 0,
-      wickets: 0
-    });
+  const bowlers = match.bowlingPlayers.filter(
+    player => player.role === "Bowler" || player.role === "All-Rounder"
+  );
+
+  if (availableBatters.length < 2) {
+    alert("Batting team needs at least two batters, all-rounders, or keepers.");
+    return;
   }
 
-  match.currentBatter = match.batters[0].name;
-  match.currentBowler = match.bowlers[0].name;
+  if (bowlers.length < 1) {
+    alert("Bowling team needs at least one bowler or all-rounder.");
+    return;
+  }
+
+  match.striker = availableBatters[0].name;
+  match.nonStriker = availableBatters[1].name;
+  match.currentBowler = bowlers[0].name;
 
   saveMatch();
   showMatchSection();
 }
 
 function showMatchSection() {
-  document.getElementById("setup-section").classList.add("hidden");
+  document.getElementById("teams-section").classList.add("hidden");
+  document.getElementById("match-setup-section").classList.add("hidden");
   document.getElementById("match-section").classList.remove("hidden");
 
   document.getElementById("battingTeamName").textContent = match.battingTeam;
@@ -67,33 +214,53 @@ function showMatchSection() {
 }
 
 function fillPlayerSelects() {
-  const batterSelect = document.getElementById("batterSelect");
+  const strikerSelect = document.getElementById("strikerSelect");
+  const nonStrikerSelect = document.getElementById("nonStrikerSelect");
   const bowlerSelect = document.getElementById("bowlerSelect");
 
-  batterSelect.innerHTML = "";
+  strikerSelect.innerHTML = "";
+  nonStrikerSelect.innerHTML = "";
   bowlerSelect.innerHTML = "";
 
-  match.batters.forEach(player => {
+  match.battingPlayers.forEach(player => {
     if (!player.out) {
       const option = document.createElement("option");
       option.value = player.name;
-      option.textContent = player.name;
-      if (player.name === match.currentBatter) option.selected = true;
-      batterSelect.appendChild(option);
+      option.textContent = `${player.name} (${player.role})`;
+
+      if (player.name === match.striker) option.selected = true;
+      strikerSelect.appendChild(option);
+
+      const option2 = document.createElement("option");
+      option2.value = player.name;
+      option2.textContent = `${player.name} (${player.role})`;
+
+      if (player.name === match.nonStriker) option2.selected = true;
+      nonStrikerSelect.appendChild(option2);
     }
   });
 
-  match.bowlers.forEach(player => {
-    const option = document.createElement("option");
-    option.value = player.name;
-    option.textContent = player.name;
-    if (player.name === match.currentBowler) option.selected = true;
-    bowlerSelect.appendChild(option);
+  match.bowlingPlayers.forEach(player => {
+    if (player.role === "Bowler" || player.role === "All-Rounder") {
+      const option = document.createElement("option");
+      option.value = player.name;
+      option.textContent = `${player.name} (${player.role})`;
+
+      if (player.name === match.currentBowler) option.selected = true;
+      bowlerSelect.appendChild(option);
+    }
   });
 
-  batterSelect.onchange = () => {
-    match.currentBatter = batterSelect.value;
+  strikerSelect.onchange = () => {
+    match.striker = strikerSelect.value;
     saveMatch();
+    updateDisplay();
+  };
+
+  nonStrikerSelect.onchange = () => {
+    match.nonStriker = nonStrikerSelect.value;
+    saveMatch();
+    updateDisplay();
   };
 
   bowlerSelect.onchange = () => {
@@ -102,32 +269,33 @@ function fillPlayerSelects() {
   };
 }
 
-function getBatter(name) {
-  return match.batters.find(player => player.name === name);
-}
-
-function getBowler(name) {
-  return match.bowlers.find(player => player.name === name);
+function getPlayer(list, name) {
+  return list.find(player => player.name === name);
 }
 
 function addRuns(runs) {
-  const batter = getBatter(match.currentBatter);
-  const bowler = getBowler(match.currentBowler);
+  const striker = getPlayer(match.battingPlayers, match.striker);
+  const bowler = getPlayer(match.bowlingPlayers, match.currentBowler);
 
-  if (!batter || !bowler) return;
+  if (!striker || !bowler) return;
 
-  batter.runs += runs;
-  batter.balls += 1;
+  striker.runs += runs;
+  striker.balls += 1;
+  striker.status = "Batting";
 
-  if (runs === 4) batter.fours += 1;
-  if (runs === 6) batter.sixes += 1;
+  if (runs === 4) striker.fours += 1;
+  if (runs === 6) striker.sixes += 1;
 
   match.runs += runs;
-  bowler.runs += runs;
-  bowler.balls += 1;
+  bowler.bowlingRuns += runs;
+  bowler.bowlingBalls += 1;
   match.legalBalls += 1;
 
   match.ballHistory.push(runs);
+
+  if (runs % 2 === 1) {
+    swapBatters();
+  }
 
   checkInningsEnd();
   saveMatch();
@@ -135,23 +303,29 @@ function addRuns(runs) {
 }
 
 function addExtra(type) {
-  const bowler = getBowler(match.currentBowler);
+  const bowler = getPlayer(match.bowlingPlayers, match.currentBowler);
   if (!bowler) return;
 
-  let runs = 1;
+  match.runs += 1;
+  bowler.bowlingRuns += 1;
 
-  match.runs += runs;
-  bowler.runs += runs;
+  let label = "";
 
-  let label = type === "wide" ? "WD" : type === "noball" ? "NB" : type === "bye" ? "B" : "LB";
-
-  if (type === "wide" || type === "noball") {
-    match.ballHistory.push(label);
-  } else {
-    bowler.balls += 1;
+  if (type === "wide") {
+    label = "WD";
+  } else if (type === "noball") {
+    label = "NB";
+  } else if (type === "bye") {
+    label = "B";
+    bowler.bowlingBalls += 1;
     match.legalBalls += 1;
-    match.ballHistory.push(label);
+  } else if (type === "legbye") {
+    label = "LB";
+    bowler.bowlingBalls += 1;
+    match.legalBalls += 1;
   }
+
+  match.ballHistory.push(label);
 
   checkInningsEnd();
   saveMatch();
@@ -159,35 +333,52 @@ function addExtra(type) {
 }
 
 function addWicket() {
-  const batter = getBatter(match.currentBatter);
-  const bowler = getBowler(match.currentBowler);
+  const striker = getPlayer(match.battingPlayers, match.striker);
+  const bowler = getPlayer(match.bowlingPlayers, match.currentBowler);
 
-  if (!batter || !bowler) return;
+  if (!striker || !bowler) return;
 
-  batter.out = true;
-  batter.status = "Out";
+  striker.out = true;
+  striker.status = "Out";
+
   bowler.wickets += 1;
-  bowler.balls += 1;
+  bowler.bowlingBalls += 1;
   match.legalBalls += 1;
   match.wickets += 1;
 
   match.ballHistory.push("W");
 
-  const nextBatter = match.batters.find(player => !player.out && player.name !== match.currentBatter);
+  const nextBatter = match.battingPlayers.find(
+    player =>
+      !player.out &&
+      player.name !== match.striker &&
+      player.name !== match.nonStriker &&
+      (player.role === "Batter" || player.role === "All-Rounder" || player.role === "Keeper")
+  );
 
   if (nextBatter) {
-    match.currentBatter = nextBatter.name;
+    match.striker = nextBatter.name;
+    striker.status = "Out";
   }
 
   checkInningsEnd();
   saveMatch();
+  fillPlayerSelects();
+  updateDisplay();
+}
+
+function swapBatters() {
+  const temp = match.striker;
+  match.striker = match.nonStriker;
+  match.nonStriker = temp;
+
+  saveMatch();
+  fillPlayerSelects();
   updateDisplay();
 }
 
 function oversText(balls) {
-  const overs = Math.floor(balls / 6);
-  const remaining = balls % 6;
-  return `${overs}.${remaining}`;
+  return `${Math.floor(balls / 6)}.${balls % 6}`;
 }
 
 function calculateRunRate() {
@@ -209,39 +400,35 @@ function endInnings() {
     match.firstInningsRuns = match.runs;
     match.innings = 2;
 
-    const temp = match.battingTeam;
+    const tempTeam = match.battingTeam;
     match.battingTeam = match.bowlingTeam;
-    match.bowlingTeam = temp;
+    match.bowlingTeam = tempTeam;
+
+    const tempPlayers = match.battingPlayers;
+    match.battingPlayers = match.bowlingPlayers;
+    match.bowlingPlayers = tempPlayers;
 
     match.runs = 0;
     match.wickets = 0;
     match.legalBalls = 0;
     match.ballHistory = [];
 
-    match.batters = [];
-    match.bowlers = [];
+    const availableBatters = match.battingPlayers.filter(
+      player => player.role === "Batter" || player.role === "All-Rounder" || player.role === "Keeper"
+    );
 
-    for (let i = 1; i <= 11; i++) {
-      match.batters.push({
-        name: `${match.battingTeam} Player ${i}`,
-        runs: 0,
-        balls: 0,
-        fours: 0,
-        sixes: 0,
-        out: false,
-        status: "Not Out"
-      });
+    const bowlers = match.bowlingPlayers.filter(
+      player => player.role === "Bowler" || player.role === "All-Rounder"
+    );
 
-      match.bowlers.push({
-        name: `${match.bowlingTeam} Player ${i}`,
-        balls: 0,
-        runs: 0,
-        wickets: 0
-      });
+    if (availableBatters.length < 2 || bowlers.length < 1) {
+      alert("Second innings cannot start. Please check player roles.");
+      return;
     }
 
-    match.currentBatter = match.batters[0].name;
-    match.currentBowler = match.bowlers[0].name;
+    match.striker = availableBatters[0].name;
+    match.nonStriker = availableBatters[1].name;
+    match.currentBowler = bowlers[0].name;
 
     saveMatch();
     fillPlayerSelects();
@@ -272,7 +459,6 @@ function updateDisplay() {
   document.getElementById("teamWickets").textContent = match.wickets;
   document.getElementById("overs").textContent = oversText(match.legalBalls);
   document.getElementById("runRate").textContent = calculateRunRate();
-
   document.getElementById("battingTeamName").textContent = match.battingTeam;
 
   if (match.innings === 2 && match.firstInningsRuns !== null) {
@@ -295,19 +481,28 @@ function updateBattingTable() {
   const tbody = document.querySelector("#battingTable tbody");
   tbody.innerHTML = "";
 
-  match.batters.forEach(player => {
+  match.battingPlayers.forEach(player => {
     const strikeRate = player.balls === 0 ? "0.00" : ((player.runs / player.balls) * 100).toFixed(2);
+
+    let status = player.status;
+
+    if (player.name === match.striker) status = "Striker";
+    else if (player.name === match.nonStriker) status = "Non-Striker";
+    else if (player.out) status = "Out";
+    else if (player.balls > 0) status = "Not Out";
 
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${player.name}</td>
+      <td>${player.role}</td>
       <td>${player.runs}</td>
       <td>${player.balls}</td>
       <td>${player.fours}</td>
       <td>${player.sixes}</td>
       <td>${strikeRate}</td>
-      <td>${player.out ? "Out" : player.name === match.currentBatter ? "Batting" : "Not Out"}</td>
+      <td>${status}</td>
     `;
+
     tbody.appendChild(row);
   });
 }
@@ -316,17 +511,21 @@ function updateBowlingTable() {
   const tbody = document.querySelector("#bowlingTable tbody");
   tbody.innerHTML = "";
 
-  match.bowlers.forEach(player => {
-    const economy = player.balls === 0 ? "0.00" : ((player.runs / player.balls) * 6).toFixed(2);
+  match.bowlingPlayers.forEach(player => {
+    const economy = player.bowlingBalls === 0
+      ? "0.00"
+      : ((player.bowlingRuns / player.bowlingBalls) * 6).toFixed(2);
 
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${player.name}</td>
-      <td>${oversText(player.balls)}</td>
-      <td>${player.runs}</td>
+      <td>${player.role}</td>
+      <td>${oversText(player.bowlingBalls)}</td>
+      <td>${player.bowlingRuns}</td>
       <td>${player.wickets}</td>
       <td>${economy}</td>
     `;
+
     tbody.appendChild(row);
   });
 }
@@ -352,14 +551,17 @@ function saveMatch() {
 }
 
 function loadSavedMatch() {
-  const saved = localStorage.getItem("cricketMatch");
+  const savedMatch = localStorage.getItem("cricketMatch");
+  const savedTeams = localStorage.getItem("cricketTeams");
 
-  if (!saved) {
+  if (!savedMatch || !savedTeams) {
     alert("No saved match found.");
     return;
   }
 
-  match = JSON.parse(saved);
+  teams = JSON.parse(savedTeams);
+  match = JSON.parse(savedMatch);
+
   showMatchSection();
 }
 
